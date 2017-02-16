@@ -2,7 +2,7 @@
 
 #mongodb
 
-CollectionName = "DigitalMarketing"
+CollectionName = "Programming"
 
 
 

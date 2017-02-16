@@ -4,11 +4,12 @@
 import re
 import os
 import codecs
+from utilities import *
 
 #“ex” for exercises, “ﬁg” for
 #ﬁgures, “n” for footnotes, “sum” for summaries.
 
-blackListedStrings = ['ex.', 'pr.', 'fig.', 'n.', 'ex', 'fig', 'n', 'sum']
+#blackListedStrings = ['ex.', 'pr.', 'fig.', 'n.', 'ex', 'fig', 'n', 'sum']
 
 def isIndexLine(linecontent):
     
@@ -113,7 +114,7 @@ def parseIndexPage(pagepath, logger, indexdict =  {}):
         try:
             cleanedline = cleanIncomingString (line.strip())
             strippedline = cleanedline.strip()
-            strippedline= unicode(strippedline, "utf8")
+            #strippedline= unicode(strippedline, "utf8")
             #strippedline=strippedline.decode('utf-8','ignore').encode("utf-8")
         except:
             print "Error in cleaning string : ", line, pagepath
@@ -167,38 +168,6 @@ def parseIndexPage(pagepath, logger, indexdict =  {}):
     return indexdict
     
 
-def isAlphaNumericString(string):
-    
-     #regx = re.compile(r'[[a-z][A-Z]{1,}\s\-\d\,\/\+\(\)\.]*')
-     
-     if any(c.isalpha() for c in string):
-         return True
-     else: 
-         regx = re.compile(r'\d+\.\d+')
-         return bool(regx.match(string))
-     
-     
-def isPageNumbers(string):
-    
-     regx = re.compile(r'[\d+\-\–\,\.]')
-     
-     return bool(regx.match(string))
-     
-def isNumber (string):
-    
-     if len(string) == 0:
-         return False
-     
-     return all(c.isdigit() for c in string)
-     
-def isNumberWithADot(string):
-     
-     regx = re.compile(r'\d+\.$')
-     
-     return bool(regx.match(string))
-    
-     
-     
 def splitPageNumbers (string):
     
     newstring = string.replace ('-', ' ').replace('–', ' ').replace('--',' ')

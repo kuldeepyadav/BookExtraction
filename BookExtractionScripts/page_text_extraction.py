@@ -13,7 +13,9 @@ from pdfminer.layout import LAParams,LTTextBox, LTTextLine, LTFigure, LTImage, L
 from pdfminer.converter import PDFPageAggregator
 import layout_scanner
 from pdfminer.converter import XMLConverter, HTMLConverter, TextConverter
-
+import os
+from utilities import *
+import collections
 
 # Open a PDF file.
 
@@ -140,10 +142,69 @@ def getMetadataInfoUsingPDF(bookPathPDF):
     doc = PDFDocument(parser)
 
     return doc.info  # The "Info" metadata
+    
 
+def extractpagenumber(pagePath, candidatepagenum):
+    
+    f= open(pagePath)
+    
+    allNumbers = []
+    for eachline in f:             #scan to get invdividual phone numbers
+        if isNumber (eachline.strip()):
+            allNumbers.append(int(eachline.strip()))
+            
+    filteredNumbers = []
+
+    for eachnum in allNumbers:
+        if eachnum == 0 or eachnum > candidatepagenum:
+            continue
+        else:
+            filteredNumbers.append(eachnum)
+    
+    if len(filteredNumbers) > 0:
+        return filteredNumbers[0]
+    else:
+        return None        
+   
+        
+def extractPageNumberFromFile(fileName):
+    
+    #page_8.txt
+    
+    pagenum= int(fileName.split('.')[0].split('_')[1])
+    return pagenum
     
     
 
+def get_page_offset(bookPath):
+    
+    #pagesDir = bookPath['pagesDir']
+    pagesDir = bookPath
+
+    if not os.path.exists(pagesDir):
+        print "pages dir not created, create a directory at: ", pagesDir
+
+    path, dirs, files = os.walk(pagesDir).next()
+    
+    allPageOffset = []
+    
+    for eachFile in files:
+        if not '.txt' in eachFile:
+            continue
+            
+        pagepath = path + eachFile
+        candidatepagenum = extractPageNumberFromFile(eachFile)
+        actualpagenum = extractpagenumber(pagepath, candidatepagenum)
+        
+        if actualpagenum is not None:
+            page_offset = candidatepagenum - actualpagenum
+            print eachFile, candidatepagenum, actualpagenum
+            allPageOffset.append(page_offset)  
+        
+    offsetDict = collections.Counter(allPageOffset)
+    print str(offsetDict)
+    pageoffset = offsetDict.most_common()[0][0]
+    return pageoffset
 
     
     

@@ -3,6 +3,7 @@
 
 
 from os import walk
+import traceback
 import os
 import sys
 import pickle
@@ -109,7 +110,7 @@ if __name__ == "__main__":
     allowedFileNames = []
     blockedFileNames = []
     
-    defaultPath = '/home/kuldeep/bookextraction/Books/test/'
+    defaultPath = '/home/kuldeep/bookextraction/Books/programming/'
     print "number of arguments are : ", len(sys.argv)  
     
     if len(sys.argv) > 2:
@@ -147,31 +148,30 @@ if __name__ == "__main__":
         
         #tocResult, toc  = extractTOC(eachbookPath)
         
-        
-        #try:
+        try:
             
-        pageResult = convertPDFToTextPages(eachbookPath)
-        print "Page result extraction : ", pageResult
+            pageResult = convertPDFToTextPages(eachbookPath)
+            print "Page result extraction : ", pageResult
             
-        tocResult, toc  = extractTOC(eachbookPath)
-        print "toc result : ", tocResult
-        log.writeLine ('toc processing result for ' + eachbookPath['pdf'] + ' ' + str(tocResult))
+            tocResult, toc  = extractTOC(eachbookPath)
+            print "toc result : ", tocResult
+            log.writeLine ('toc processing result for ' + eachbookPath['pdf'] + ' ' + str(tocResult))
             
-        indexResult, indexdict = getBookIndex(eachbookPath, log)
-        print "index result : ", indexResult, len(indexdict)
+            indexResult, indexdict = getBookIndex(eachbookPath, log)
+            print "index result : ", indexResult, len(indexdict)
             
-        #indexResult, indexdict = getBookIndexFromFile(eachbookPath, log)    
-        #insertBookIntoDB(eachbookPath, bookInfo, bookTitle, toc, indexdict, log)
+            #indexResult, indexdict = getBookIndexFromFile(eachbookPath, log)    
+            insertBookIntoDB(eachbookPath, bookInfo, bookTitle, toc, indexdict, log)
 
-        log.writeLine ("Processed : " + eachbookPath['pdf'] + " " + str(pageResult) + " " + str(tocResult) + " " + str(indexResult))
+            log.writeLine ("Processed : " + eachbookPath['pdf'] + " " + str(pageResult) + " " + str(tocResult) + " " + str(indexResult))
             
-        """
+        
         except:
             log.writeLine ('Error in processing book: ' + eachbookPath['pdf'])
-            e = sys.exc_info()[0]
-            print "Error is : ", e
-            log.writeLine ('Error in processing book: ' + str(e))
-        """
+            desired_trace = traceback.format_exc(sys.exc_info())
+            print "Error is : ", desired_trace
+            log.writeLine ('Error in processing book: ' + str(desired_trace))
+        
         
     log.closeLogger()
     
