@@ -4,6 +4,10 @@
 
 
 import sys
+import traceback
+import codecs
+import json
+import os
 
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfdocument import PDFDocument, PDFNoOutlines
@@ -41,10 +45,17 @@ def getTOC(filePath):
     def resolve_dest(dest):
         if isinstance(dest, str):
             dest = resolve1(document.get_dest(dest))
+            #print "updated dest [str] : ",dest
         elif isinstance(dest, PSLiteral):
             dest = resolve1(document.get_dest(dest.name))
+            #print "updated dest [PSLiteral]: ", dest
+        elif isinstance(dest, PDFObjRef):
+            dest = resolve1(dest)
+            #print "updated dest [PDFObjRef]: ", dest
         if isinstance(dest, dict):
             dest = dest['D']
+            #print "updated dest [dict]: ", dest
+        
         return dest        
         
         
@@ -62,15 +73,31 @@ def getTOC(filePath):
             #print level, title
             
             if dest:
-                dest = resolve_dest(dest)
-                pageno = pages[dest[0].objid]
+                try:
+                    dest = resolve_dest(dest)
+                    pageno = pages[dest[0].objid]
+                except:
+                    desired_trace = traceback.format_exc(sys.exc_info())
+                    print "Exception caught", desired_trace
+                    break                    
             elif a:
-                action = a.resolve()
-                if isinstance(action, dict):
-                    subtype = action.get('S')
-                    if subtype and repr(subtype) == '/GoTo' and action.get('D'):
-                        dest = resolve_dest(action['D'])
-                        pageno = pages[dest[0].objid]
+                #print str(a) 
+                #action = a.resolve()
+                try:
+                    #action = a
+                    if not isinstance(a, dict):
+                        action = a.resolve()
+                    else:
+                        action = a
+                    if isinstance(action, dict):
+                        subtype = action.get('S')
+                        if subtype and repr(subtype) == '/GoTo' and action.get('D'):
+                            dest = resolve_dest(action['D'])
+                            pageno = pages[dest[0].objid]
+                except:
+                    desired_trace = traceback.format_exc(sys.exc_info())
+                    print "Exception caught", desired_trace
+                    break
             
             toc.append((level, title, pageno))
             
@@ -81,11 +108,20 @@ def getTOCFromLayoutScanner(filePath):
     toc = layout_scanner.get_toc(filePath)
     return toc
    
-def extractTOC(bookPath):
+def extractTOC(bookPath, logger):
+    
+    tocfile = bookPath['metadataDir'] + 'toc.txt'
+    tocJSONFile = bookPath['metadataDir'] + 'toc.txt'
+    
+    if os.path.exists(tocfile) or os.path.exists(tocJSONFile):        
+        tocResult, tocdict = readTOCFromFile(bookPath, logger)
+        logger.writeLine ("TOC already exits : " + str(tocResult) + " " + str(tocdict))
+        return tocResult, tocdict
     
     toc = getTOC (bookPath['pdf'])     
     
-    print toc
+    if toc == []:
+        return False, []
     
     allconcepts =[]
     tocdict = OrderedDict()
@@ -113,9 +149,33 @@ def extractTOC(bookPath):
     print "Length of all concepts is : ", len(allconcepts)
 
     with open(bookPath['metadataDir'] + 'toc.txt', 'w') as fp:
-        for concept in allconcepts:
-            fp.write (concept + "\n")  
+        for item in tocdict.items():
+            fp.write (str(item) + "\n")  
+            logger.writeLine(str(item))
+            
+    tocJSONPath = bookPath['metadataDir'] + 'toc.json'
+            
+    json.dump(tocdict, open(tocJSONPath,'w'))
+    
+    logger.writeLine("TOC dumped to : " + tocJSONPath + " " +  str(len(tocdict.items())))
             
     return True, tocdict
+
+
+def readTOCFromFile(bookPath, logger):
+    
+    tocJSONFilePath = bookPath['metadataDir'] + 'toc.json'
+    
+    try:
+        tocdict = json.load(open(tocJSONFilePath), object_pairs_hook=OrderedDict)
+    except:
+         desired_trace = traceback.format_exc(sys.exc_info())
+         print "Exception caught", desired_trace
+         logger.writeLine("exception caught while reading toc.json " + desired_trace)
+         return False, {}
+         
+    return True, tocdict
+      
+    
         
     

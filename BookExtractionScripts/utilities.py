@@ -33,3 +33,4 @@ def isNumberWithADot(string):
      regx = re.compile(r'\d+\.$')
      
      return bool(regx.match(string))
+     

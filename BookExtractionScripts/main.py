@@ -7,8 +7,9 @@ import traceback
 import os
 import sys
 import pickle
-from page_text_extraction import convertPDFToTextPages, getMetadataInformation
+from page_text_extraction import convertPDFToTextPages, getMetadataInformation, get_page_offset, extractCleanBookText
 from index_words_extraction import getBookIndex, getBookIndexFromFile
+from associate_toc_index import associateTopicsWithKeywords,getTopicKeywords
 import layout_scanner
 from extract_toc import extractTOC
 from logger import Logger
@@ -56,6 +57,21 @@ def readDatasetDirectory(rootFolder):
     #print allDirs, len(allDirs)
     #print allBookPaths, len(allBookPaths)
     return allPDFfiles   
+    
+def readSingleFile(pdfFilePath):
+    
+    allPDFfiles = []
+    bookPath= {}
+    if '.pdf' in pdfFilePath:
+        filecomponents = os.path.split(pdfFilePath)
+        bookPath['pdf'] = pdfFilePath
+        bookPath['dir'] = filecomponents[0] + "/"
+        bookPath['name'] = filecomponents[1]
+        print "book path is: ", bookPath
+        allPDFfiles.append(bookPath)
+        
+    return allPDFfiles
+    
     
 def createDirectories(bookPath):
     
@@ -110,7 +126,7 @@ if __name__ == "__main__":
     allowedFileNames = []
     blockedFileNames = []
     
-    defaultPath = '/home/kuldeep/bookextraction/Books/programming/'
+    defaultPath = '/home/kuldeep/bookextraction/Books/DataScience/murphy.pdf'
     print "number of arguments are : ", len(sys.argv)  
     
     if len(sys.argv) > 2:
@@ -121,11 +137,17 @@ if __name__ == "__main__":
         print "setting to deafult path ", bookPath
         #exit
         
-    log = Logger(bookPath + 'bookProcessingLog.txt', True)
+    if '.pdf' in bookPath:
+        filecomponents = os.path.split(bookPath)
+        rootDirPath = filecomponents[0] + '/'
+        log = Logger(rootDirPath + 'bookProcessingLog.txt', False)        
+        allPDFFiles = readSingleFile(bookPath)
+    else:
+        log = Logger(bookPath + 'bookProcessingLog.txt', True)
+        allPDFFiles = readDatasetDirectory(bookPath)
         
-    allPDFFiles = readDatasetDirectory(bookPath)
-    print "total pdf files : ", len(allPDFFiles)    
-    
+        
+    print "total pdf files : ", len(allPDFFiles)   
     
     for eachbookPath in allPDFFiles:
         
@@ -142,29 +164,38 @@ if __name__ == "__main__":
         toc = []
         indexdict = []
         createDirectories(eachbookPath)  
-        bookInfo, bookTitle = getMetadataInformation(eachbookPath)
-        print "bookinfo result : ", bookInfo, bookTitle
-        log.writeLine ("book info result : " + str(bookInfo))    
-        
         #tocResult, toc  = extractTOC(eachbookPath)
         
         try:
             
+            tocResult, tocdict  = extractTOC(eachbookPath, log)
+            print "toc result : ", tocResult
+            log.writeLine ('toc processing result for ' + eachbookPath['pdf'] + ' ' + str(tocResult))
+            
+            
             pageResult = convertPDFToTextPages(eachbookPath)
             print "Page result extraction : ", pageResult
             
-            tocResult, toc  = extractTOC(eachbookPath)
-            print "toc result : ", tocResult
-            log.writeLine ('toc processing result for ' + eachbookPath['pdf'] + ' ' + str(tocResult))
+            if pageResult == False:
+                continue
+            
+            pageoffset,totalpages = get_page_offset (eachbookPath, log)
+            print "page offset and total pages are : ", pageoffset, totalpages
+            log.writeLine ("page offset, total pages : " + str(pageoffset) + " " + str(totalpages))
+            
+            #extractCleanBookText(eachbookPath, pageoffset, totalpages, log)
             
             indexResult, indexdict = getBookIndex(eachbookPath, log)
             print "index result : ", indexResult, len(indexdict)
             
-            #indexResult, indexdict = getBookIndexFromFile(eachbookPath, log)    
-            insertBookIntoDB(eachbookPath, bookInfo, bookTitle, toc, indexdict, log)
-
-            log.writeLine ("Processed : " + eachbookPath['pdf'] + " " + str(pageResult) + " " + str(tocResult) + " " + str(indexResult))
+            associateTopicsWithKeywords(tocdict, indexdict, pageoffset, log)
             
+            """
+            #indexResult, indexdict = getBookIndexFromFile(eachbookPath, log)    
+            #insertBookIntoDB(eachbookPath, bookInfo, bookTitle, toc, indexdict, log)
+
+            #log.writeLine ("Processed : " + eachbookPath['pdf'] + " " + str(pageResult) + " " + str(tocResult) + " " + str(indexResult))
+            """
         
         except:
             log.writeLine ('Error in processing book: ' + eachbookPath['pdf'])

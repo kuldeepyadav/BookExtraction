@@ -102,17 +102,25 @@ def convertPDFToHTMLPage(bookPath):
     
 def convertPDFToTextPages(bookPath):
     #allText,outlines = getAllPageText(bookPath)
+ 
+    #to check if no extraction of pages is required 
+    samplefile = bookPath['pagesDir'] + 'page_0.txt'
+    if os.path.exists(samplefile):
+        return True
     
     pages = getPageWiseText (bookPath['pdf'])
 
+    if len(pages) ==0:
+        return False        
+    
     for i,eachpage in enumerate(pages):
         pageName = 'page_' + str(i) + ".txt"
         pagePath = bookPath['pagesDir'] + pageName
         
         f= open(pagePath,'w')
         f.write (eachpage)
-        f.close()
-        
+        f.close()        
+    
     return True
     
     
@@ -142,7 +150,20 @@ def getMetadataInfoUsingPDF(bookPathPDF):
     doc = PDFDocument(parser)
 
     return doc.info  # The "Info" metadata
+ 
+def isPageStringWithNumber(pagestring):
+     regx = re.compile(r'Page|page\s\d+$')
+     
+     return bool(regx.match(pagestring)) 
+     
+def parsePageStringWithNumber(pagestring):
+    pagestring = pagestring.lower().replace('page', '').strip()
     
+    if isNumber(pagestring):
+        return int(pagestring)
+    else:
+        return None
+
 
 def extractpagenumber(pagePath, candidatepagenum):
     
@@ -150,10 +171,18 @@ def extractpagenumber(pagePath, candidatepagenum):
     
     allNumbers = []
     for eachline in f:             #scan to get invdividual phone numbers
-        if isNumber (eachline.strip()):
-            allNumbers.append(int(eachline.strip()))
+        eachline = eachline.strip()
+        if isNumber (eachline):
+            allNumbers.append(int(eachline))
+        elif isPageStringWithNumber(eachline):
+            pagenum = parsePageStringWithNumber(eachline)
+            allNumbers.append(pagenum)
+        else:
+             continue
+        
             
     filteredNumbers = []
+    print "all numbers are : ", len(allNumbers),allNumbers
 
     for eachnum in allNumbers:
         if eachnum == 0 or eachnum > candidatepagenum:
@@ -176,10 +205,10 @@ def extractPageNumberFromFile(fileName):
     
     
 
-def get_page_offset(bookPath):
+def get_page_offset(bookPath, logger):
     
-    #pagesDir = bookPath['pagesDir']
-    pagesDir = bookPath
+    pagesDir = bookPath['pagesDir']
+    #pagesDir = bookPath
 
     if not os.path.exists(pagesDir):
         print "pages dir not created, create a directory at: ", pagesDir
@@ -188,7 +217,17 @@ def get_page_offset(bookPath):
     
     allPageOffset = []
     
-    for eachFile in files:
+    totalpages = len(files)
+    print "number of files to be scanned : ", totalpages
+    logger.writeLine("number of files to be scanned : " +  str(len(files)))
+    
+    if totalpages == 0:
+        return None
+        
+        
+    filelist, pagefiledict = sortFilesByName(files)
+    
+    for eachFile in filelist:
         if not '.txt' in eachFile:
             continue
             
@@ -199,12 +238,105 @@ def get_page_offset(bookPath):
         if actualpagenum is not None:
             page_offset = candidatepagenum - actualpagenum
             print eachFile, candidatepagenum, actualpagenum
+            logger.writeLine(eachFile + " " + str(candidatepagenum) + " " + str(actualpagenum))
             allPageOffset.append(page_offset)  
-        
+    
+    print "length of allPageOffset is : ",len(allPageOffset)
+    logger.writeLine("length of allPageOffset is : " + str(len(allPageOffset)))
+    
+    if len(allPageOffset) == 0:
+        return 0
+    
     offsetDict = collections.Counter(allPageOffset)
     print str(offsetDict)
+    logger.writeLine("Offset dict is : " + str(offsetDict))
     pageoffset = offsetDict.most_common()[0][0]
-    return pageoffset
+    pageoffset_support = offsetDict.most_common()[0][1]
 
+    support = float(pageoffset_support)/totalpages
+
+    if support < 0.2:
+        pageoffset = 0
+        logger.writeLine ("support is less than 0.2, page offset is : " + str(support) + " " + str(pageoffset))
+        
+    offsetlimit = totalpages * 0.1
+    if pageoffset > offsetlimit:
+        pageoffset = 0   
+        logger.writeLine ("offset is more than limit : " + str(pageoffset))
+
+
+    bookInfo, bookTitle = getMetadataInformation(bookPath)
+    print "bookinfo result : ", bookInfo, bookTitle
+    logger.writeLine ("book info result : " + str(bookInfo))
+
+    with open(bookPath['metadataDir'] + 'info.txt','w') as f:
+        f.write (str(bookInfo) + "\n")
+        f.write (str(pageoffset) + "\n")
+        f.write (str(totalpages))       
+        
+    return pageoffset, totalpages
     
+
+def sortFilesByName(files):   #returns  a dict
+    
+    pagefiledict = {}
+    for eachfile in files:
+        pagenum = extractPageNumberFromFile(eachfile)
+        pagefiledict[eachfile] = int(pagenum)
+    
+    return sorted(pagefiledict, key=pagefiledict.__getitem__), pagefiledict
+    
+    
+def extractCleanBookText(bookPath, pageoffset, totalpages, logger):
+
+    pagesDir = bookPath['pagesDir']
+    #pagesDir = bookPath
+
+    if not os.path.exists(pagesDir):
+        print "pages dir not created, create a directory at: ", pagesDir
+
+    path, dirs, files = os.walk(pagesDir).next()
+    
+    totalpages = len(files)
+    print "number of files to be read : ", totalpages
+    logger.writeLine("number of files to be read : " +  str(len(files)))
+    
+    startingpage = pageoffset + 1
+    endingpage = totalpages - 10      #ignore last few pages
+    
+    logger.writeLine("Starting and ending page number " +  str(startingpage)  + " " +  str(endingpage))
+    
+    filelist, pagefiledict = sortFilesByName(files)
+    
+    logger.writeLine("file list is : " + str(filelist))
+    
+    completeBookTextPath = bookPath['metadataDir'] + 'completeBookText.txt'
+    bookTextFile = open(completeBookTextPath,'w')
+    
+    logger.writeLine("complete booktext path : " + completeBookTextPath)
+    
+    #logger.writeLine("sorted files are : " + str(len(files)))    
+    
+    for eachFile in filelist:
+        if not '.txt' in eachFile:
+            logger.writeLine("file is not text : " + eachFile)
+            continue
+        
+        pagenum= pagefiledict[eachFile]
+        #pagenum = extractPageNumberFromFile(eachFile)
+        
+        if pagenum not in range(startingpage, endingpage):
+            logger.writeLine ("page not in range : " + str(pagenum))
+            continue
+        
+        pagepath = path + eachFile
+        logger.writeLine("reading and write contents for the file: " + pagepath)
+        f = open(pagepath)
+        for line in f:
+            if len(line) < 50:
+                continue
+            
+            bookTextFile.write (line)
+            
+    bookTextFile.close()
     

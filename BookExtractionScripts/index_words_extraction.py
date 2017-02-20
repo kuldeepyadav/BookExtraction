@@ -265,7 +265,15 @@ def getBookIndex(bookPath, logger):
     pagesDir = bookPath['pagesDir']
 
     if not os.path.exists(pagesDir):
+        logger.writeLine("pages dir not created, create a directory at: " + pagesDir)
         print "pages dir not created, create a directory at: ", pagesDir
+        
+    indexfilepath= bookPath['metadataDir'] + 'index.txt'
+    
+    if os.path.exists(indexfilepath):
+        logger.writeLine("Index file exists already : " + indexfilepath)
+        indexresult, indexdict = getBookIndexFromFile (bookPath, logger)
+        return indexresult, indexdict
 
     path, dirs, files = os.walk(pagesDir).next()
     
