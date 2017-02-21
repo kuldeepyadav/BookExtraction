@@ -203,8 +203,24 @@ def extractPageNumberFromFile(fileName):
     pagenum= int(fileName.split('.')[0].split('_')[1])
     return pagenum
     
+def readInfoFromFile(infoFilePath, logger= None):
     
-
+    f = open(infoFilePath, 'r')
+    
+    allLines = []
+    for line in f:
+        if line.strip() != 0:
+            allLines.append(line)
+            
+    if len(allLines) != 3:
+        print "Malformed info file, extraction again", allLines
+        if logger != None:
+            logger.write ("Malformed info file, extraction again" + str(allLines))
+        return False
+    
+    return allLines[0], int(allLines[1]), int(allLines[2])
+        
+    
 def get_page_offset(bookPath, logger):
     
     pagesDir = bookPath['pagesDir']
@@ -212,6 +228,12 @@ def get_page_offset(bookPath, logger):
 
     if not os.path.exists(pagesDir):
         print "pages dir not created, create a directory at: ", pagesDir
+        
+    infofile = bookPath['metadataDir'] + 'info.txt'
+    if os.path.exists(infofile):
+        booinfo, pageoffset, totalpages = readInfoFromFile (infofile, logger)
+        return pageoffset, totalpages
+    
 
     path, dirs, files = os.walk(pagesDir).next()
     

@@ -352,7 +352,7 @@ def getBookIndexFromFile (bookPath, logger):
             
             
         if len(keyphrase) > 0:
-            indexdict[keyphrase] = pagenumberstr  
+            indexdict[keyphrase] = pagenumbers  
 
         print "is unicode : ", isunicode
         #logger.writeLine(keyphrase.encode("utf-8"))

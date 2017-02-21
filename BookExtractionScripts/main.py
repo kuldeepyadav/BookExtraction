@@ -126,7 +126,7 @@ if __name__ == "__main__":
     allowedFileNames = []
     blockedFileNames = []
     
-    defaultPath = '/home/kuldeep/bookextraction/Books/DataScience/murphy.pdf'
+    defaultPath = '/home/kuldeep/bookextraction/Books/DataScience/Pattern-Recognition-and-Machine-Learning-Christophe-M-Bishop.pdf'
     print "number of arguments are : ", len(sys.argv)  
     
     if len(sys.argv) > 2:
@@ -188,7 +188,7 @@ if __name__ == "__main__":
             indexResult, indexdict = getBookIndex(eachbookPath, log)
             print "index result : ", indexResult, len(indexdict)
             
-            associateTopicsWithKeywords(tocdict, indexdict, pageoffset, log)
+            associateTopicsWithKeywords(eachbookPath, tocdict, indexdict, pageoffset, totalpages, log)
             
             """
             #indexResult, indexdict = getBookIndexFromFile(eachbookPath, log)    
