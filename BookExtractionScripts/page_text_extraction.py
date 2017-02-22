@@ -165,7 +165,7 @@ def parsePageStringWithNumber(pagestring):
         return None
 
 
-def extractpagenumber(pagePath, candidatepagenum):
+def extractpagenumber(pagePath, candidatepagenum, logger):
     
     f= open(pagePath)
     
@@ -185,13 +185,16 @@ def extractpagenumber(pagePath, candidatepagenum):
     print "all numbers are : ", len(allNumbers),allNumbers
 
     for eachnum in allNumbers:
-        if eachnum == 0 or eachnum > candidatepagenum:
+        if eachnum == 0 or eachnum > candidatepagenum or eachnum == None:
             continue
         else:
             filteredNumbers.append(eachnum)
     
     if len(filteredNumbers) > 0:
-        return filteredNumbers[0]
+        index, value = min(enumerate(filteredNumbers), key=lambda x: abs(x[1]-candidatepagenum))
+        logger.writeLine ("Picked up nearest value from : " + str(filteredNumbers))
+        logger.writeLine ("nearest index and value: " + str(index) + " " + str(value))
+        return value
     else:
         return None        
    
@@ -255,7 +258,7 @@ def get_page_offset(bookPath, logger):
             
         pagepath = path + eachFile
         candidatepagenum = extractPageNumberFromFile(eachFile)
-        actualpagenum = extractpagenumber(pagepath, candidatepagenum)
+        actualpagenum = extractpagenumber(pagepath, candidatepagenum, logger)
         
         if actualpagenum is not None:
             page_offset = candidatepagenum - actualpagenum
